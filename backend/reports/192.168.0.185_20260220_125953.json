@@ -1,0 +1,86 @@
+{
+    "device": "192.168.0.185",
+    "os": "windows",
+    "username": "mishal",
+    "date": "2026-02-20 12:59:53",
+    "threat_level": "High",
+    "results": [
+        {
+            "id": "W-01",
+            "check": "Windows Defender Enabled",
+            "scan_status": "CheckFailed",
+            "vulnerable": null,
+            "severity": null,
+            "cve_id": null,
+            "cvss_score": null,
+            "error_type": "CheckFailed",
+            "details": "Select : Property \"AMRunning\" cannot be found.\nAt line:1 char:24\n+ Get-MpComputerStatus | Select -Expand AMRunning\n+                        ~~~~~~~~~~~~~~~~~~~~~~~~\n    + CategoryInfo          : InvalidArgument: (MSFT_MpComputer...-256240ADF7A0\"):PSObject) [Select-Object], PSArgumen \n   tException\n    + FullyQualifiedErrorId : ExpandPropertyNotFound,Microsoft.PowerShell.Commands.SelectObjectCommand"
+        },
+        {
+            "id": "W-02",
+            "check": "Firewall Enabled",
+            "scan_status": "Pass",
+            "vulnerable": false,
+            "severity": "Low",
+            "cve_id": "CWE-284",
+            "cvss_score": null,
+            "error_type": null,
+            "details": ""
+        },
+        {
+            "id": "W-03",
+            "check": "SMBv1 Disabled",
+            "scan_status": "Pass",
+            "vulnerable": false,
+            "severity": "Low",
+            "cve_id": "CVE-2017-0144",
+            "cvss_score": null,
+            "error_type": null,
+            "details": ""
+        },
+        {
+            "id": "W-04",
+            "check": "RDP NLA Enabled",
+            "scan_status": "Pass",
+            "vulnerable": false,
+            "severity": "Low",
+            "cve_id": "CVE-2019-0708",
+            "cvss_score": null,
+            "error_type": null,
+            "details": ""
+        },
+        {
+            "id": "W-05",
+            "check": "Pending Updates",
+            "scan_status": "Pass",
+            "vulnerable": true,
+            "severity": "Medium",
+            "cve_id": "Multiple-CVE",
+            "cvss_score": 6.5,
+            "error_type": null,
+            "details": "2 updates pending"
+        },
+        {
+            "id": "W-06",
+            "check": "PowerShell Logging Enabled",
+            "scan_status": "CheckFailed",
+            "vulnerable": null,
+            "severity": null,
+            "cve_id": null,
+            "cvss_score": null,
+            "error_type": "CheckFailed",
+            "details": "#< CLIXML\r\n<Objs Version=\"1.1.0.1\" xmlns=\"http://schemas.microsoft.com/powershell/2004/04\"><Obj S=\"progress\" RefId=\"0\"><TN RefId=\"0\"><T>System.Management.Automation.PSCustomObject</T><T>System.Object</T></TN><MS><I64 N=\"SourceId\">1</I64><PR N=\"Record\"><AV>Preparing modules for first use.</AV><AI>0</AI><Nil /><PI>-1</PI><PC>-1</PC><T>Completed</T><SR>-1</SR><SD> </SD></PR></MS></Obj></Objs>"
+        },
+        {
+            "id": "W-07",
+            "check": "Guest Account Disabled",
+            "scan_status": "Pass",
+            "vulnerable": false,
+            "severity": "Low",
+            "cve_id": "CWE-250",
+            "cvss_score": null,
+            "error_type": null,
+            "details": ""
+        }
+    ]
+}

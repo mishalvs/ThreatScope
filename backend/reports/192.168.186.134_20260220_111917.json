@@ -1,0 +1,86 @@
+{
+    "device": "192.168.186.134",
+    "os": "linux",
+    "username": "mishal",
+    "date": "2026-02-20 11:19:17",
+    "threat_level": "High",
+    "results": [
+        {
+            "id": "L-01",
+            "check": "SSH Root Login Disabled",
+            "scan_status": "Pass",
+            "vulnerable": false,
+            "severity": "Low",
+            "cve_id": "CWE-250",
+            "cvss_score": null,
+            "error_type": null,
+            "details": ""
+        },
+        {
+            "id": "L-02",
+            "check": "SSH Password Auth Disabled",
+            "scan_status": "Pass",
+            "vulnerable": true,
+            "severity": "High",
+            "cve_id": "CWE-307",
+            "cvss_score": 7.5,
+            "error_type": null,
+            "details": ""
+        },
+        {
+            "id": "L-03",
+            "check": "Firewall Enabled",
+            "scan_status": "CheckFailed",
+            "vulnerable": null,
+            "severity": null,
+            "cve_id": null,
+            "cvss_score": null,
+            "error_type": "CheckFailed",
+            "details": "Firewall status unavailable"
+        },
+        {
+            "id": "L-04",
+            "check": "Default Firewall Deny",
+            "scan_status": "CheckFailed",
+            "vulnerable": null,
+            "severity": null,
+            "cve_id": null,
+            "cvss_score": null,
+            "error_type": "CheckFailed",
+            "details": "UFW not accessible"
+        },
+        {
+            "id": "L-05",
+            "check": "Pending Updates",
+            "scan_status": "Pass",
+            "vulnerable": true,
+            "severity": "Medium",
+            "cve_id": "Multiple-CVE",
+            "cvss_score": 6.0,
+            "error_type": null,
+            "details": "System has pending updates"
+        },
+        {
+            "id": "L-06",
+            "check": "UFW Logging Enabled",
+            "scan_status": "CheckFailed",
+            "vulnerable": null,
+            "severity": null,
+            "cve_id": null,
+            "cvss_score": null,
+            "error_type": "CheckFailed",
+            "details": "UFW not accessible"
+        },
+        {
+            "id": "L-07",
+            "check": "World Writable Files",
+            "scan_status": "Pass",
+            "vulnerable": true,
+            "severity": "High",
+            "cve_id": "CWE-732",
+            "cvss_score": 8.5,
+            "error_type": null,
+            "details": "World writable file found"
+        }
+    ]
+}
