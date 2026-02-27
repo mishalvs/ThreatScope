@@ -1,22 +1,21 @@
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from enum import Enum
-from pydantic import BaseModel
 from scanner import run_scan
 from datetime import datetime
 from pathlib import Path
 import logging
-import re
+import ipaddress
 import json
 
 # =====================================================
 # App Initialization
 # =====================================================
 
-app = FastAPI(title="Cloud Endpoint Security Scanner API")
+app = FastAPI(title="ThreatScope Cloud Endpoint Security Scanner API")
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("threatscope")
 
 # =====================================================
 # CORS Configuration
@@ -24,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # change in production
+    allow_origins=["http://localhost:3000"],  # Change in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,18 +44,29 @@ class OSType(str, Enum):
 REPORT_DIR = Path("reports")
 REPORT_DIR.mkdir(exist_ok=True)
 
-def sanitize_ip(ip: str) -> str:
+def validate_ip(ip: str) -> str:
     """
-    Basic IP validation (IPv4 only).
+    Strong IPv4 validation using ipaddress module.
     """
-    pattern = r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
-    if not re.match(pattern, ip):
-        raise HTTPException(status_code=400, detail="Invalid IP address format")
-    return ip
+    try:
+        ip_obj = ipaddress.ip_address(ip)
+        if ip_obj.version != 4:
+            raise ValueError("Only IPv4 supported")
+        return str(ip_obj)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid IPv4 address")
+
+def validate_input_length(value: str, field_name: str, max_length: int = 100):
+    if len(value) > max_length:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field_name} too long"
+        )
 
 def save_report(data: dict, ip: str) -> str:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = REPORT_DIR / f"{ip}_{timestamp}.json"
+    safe_ip = ip.replace(".", "_")
+    filename = REPORT_DIR / f"{safe_ip}_{timestamp}.json"
 
     with filename.open("w") as f:
         json.dump(data, f, indent=4)
@@ -72,39 +82,59 @@ async def scan_endpoint(
     os_type: OSType = Form(...),
     ip: str = Form(...),
     username: str = Form(...),
-    password: str = Form(...)
+    password: str = Form(None),      # Optional (for Linux key-based)
+    key_file: str = Form(None)       # Optional (Linux SSH key)
 ):
     try:
-        ip = sanitize_ip(ip)
+        # ==============================
+        # Input Validation
+        # ==============================
+        ip = validate_ip(ip)
 
-        logger.info(f"Starting scan for {ip} ({os_type})")
+        validate_input_length(username, "Username")
+        if password:
+            validate_input_length(password, "Password", 200)
 
+        logger.info(f"[SCAN START] Target={ip} OS={os_type}")
+
+        # ==============================
+        # Run Scan
+        # ==============================
         scan_data = run_scan(
             os_type=os_type.value,
             ip=ip,
             username=username,
-            password=password
+            password=password,
+            key_file=key_file
         )
 
-        if scan_data.get("threat_level") == "ScanFailed":
+        # Normalize failure handling
+        if scan_data.get("threat_category") == "ScanFailed":
+            logger.error(f"[SCAN FAILED] {ip}")
             raise HTTPException(
                 status_code=500,
                 detail={
                     "status": "failed",
                     "error": scan_data.get("error"),
                     "device": ip,
-                    "os": os_type
+                    "os": os_type.value
                 }
             )
 
+        # ==============================
+        # Save Report
+        # ==============================
         report_file = save_report(scan_data, ip)
+
+        logger.info(f"[SCAN COMPLETE] Target={ip} Threat={scan_data.get('threat_category')}")
 
         return {
             "status": "success",
             "device": scan_data.get("device"),
             "os": scan_data.get("os"),
             "date": scan_data.get("date"),
-            "threat_level": scan_data.get("threat_level"),
+            "threat_score": scan_data.get("threat_score"),
+            "threat_category": scan_data.get("threat_category"),
             "results": scan_data.get("results"),
             "report_file": report_file
         }

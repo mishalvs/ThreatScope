@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database
+*.db
+
+# Virtual environments
+venv/
+env/
+
+# Keys / secrets
+keys/
+*.pem
+*.key
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

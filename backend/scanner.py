@@ -2,21 +2,32 @@ import linux_checks
 import windows_checks
 from utils import ssh_connect, winrm_connect
 from datetime import datetime
+import time
 
 
 # =====================================================
-# Check Registries
+# Linux Checks Registry
 # =====================================================
 
 LINUX_CHECKS = [
-    ("L-01", "SSH Root Login Disabled", linux_checks.check_ssh_root),
-    ("L-02", "SSH Password Auth Disabled", linux_checks.check_ssh_password),
+    ("L-01", "SSH Root Login", linux_checks.check_ssh_root),
+    ("L-02", "SSH Password Authentication", linux_checks.check_ssh_password),
     ("L-03", "Firewall Enabled", linux_checks.check_firewall),
-    ("L-04", "Default Firewall Deny", linux_checks.check_firewall_default),
+    ("L-04", "Default Firewall Policy", linux_checks.check_firewall_default),
     ("L-05", "Pending Updates", linux_checks.check_updates),
     ("L-06", "UFW Logging Enabled", linux_checks.check_ufw_logging),
     ("L-07", "World Writable Files", linux_checks.check_world_writable),
+    ("L-08", "Sudo Without Password", linux_checks.check_sudo_nopasswd),
+    ("L-09", "Root Cron Jobs", linux_checks.check_root_cron),
+    ("L-10", "Sensitive File Permissions", linux_checks.check_sensitive_files),
+    ("L-11", "Listening on Risky Ports", linux_checks.check_risky_ports),
+    ("L-12", "Kernel Version Check", linux_checks.check_kernel_version),
 ]
+
+
+# =====================================================
+# Windows Checks Registry
+# =====================================================
 
 WINDOWS_CHECKS = [
     ("W-01", "Windows Defender Enabled", windows_checks.check_defender),
@@ -26,11 +37,18 @@ WINDOWS_CHECKS = [
     ("W-05", "Pending Updates", windows_checks.check_updates),
     ("W-06", "PowerShell Logging Enabled", windows_checks.check_ps_logging),
     ("W-07", "Guest Account Disabled", windows_checks.check_guest_account),
+    ("W-08", "Weak Local Accounts", windows_checks.check_weak_accounts),
+    ("W-09", "Unencrypted SMB Shares", windows_checks.check_unencrypted_shares),
+    ("W-10", "SMB Signing Enabled", windows_checks.check_smb_signing),
+    ("W-11", "UAC Bypass", windows_checks.check_uac_bypass),
+    ("W-12", "Critical Services Running", windows_checks.check_critical_services),
+    ("W-13", "Listening Services on Risky Ports", windows_checks.check_listening_services),
+    ("W-14", "Weak Password Policy", windows_checks.check_weak_password_policy),
 ]
 
 
 # =====================================================
-# Common Failure Result Builder
+# Failure Result Builder
 # =====================================================
 
 def build_failed_result(error_message):
@@ -40,7 +58,7 @@ def build_failed_result(error_message):
         "severity": None,
         "cve_id": None,
         "cvss_score": None,
-        "error_type": "UnknownError",
+        "error_type": "ExecutionError",
         "details": str(error_message)
     }
 
@@ -86,10 +104,15 @@ def scan_windows(ip, username, password):
     try:
         session = winrm_connect(ip, username, password)
 
-        # Validate authentication
         test = session.run_cmd("whoami")
         if test.status_code != 0:
-            raise RuntimeError("Authentication failed")
+            return [{
+            "id": "AUTH",
+            "check": "Authentication",
+            "scan_status": "CheckFailed",
+            "error_type": "AuthFailure",
+        }]
+
 
         for cid, name, func in WINDOWS_CHECKS:
             try:
@@ -114,45 +137,62 @@ def scan_windows(ip, username, password):
 
 
 # =====================================================
-# Threat Scoring Engine
+# Improved Threat Scoring Engine
 # =====================================================
 
 def calculate_threat(results):
     total_cvss = 0
-    vuln_count = 0
+    total_valid_checks = 0
+    vulnerability_count = 0
+    failed_checks = 0
 
     for r in results:
-        if r.get("scan_status") == "Pass" and r.get("vulnerable") is True:
-            cvss = r.get("cvss_score")
-            if isinstance(cvss, (int, float)):
-                total_cvss += cvss
-                vuln_count += 1
 
-    if vuln_count == 0:
-        return 0, "Secure"
+        # Ignore failed checks completely
+        if r.get("scan_status") != "Pass":
+            failed_checks += 1
+            continue
 
-    avg_cvss = total_cvss / vuln_count
-    percent_score = round(avg_cvss * 10)
+        total_valid_checks += 1
 
-    if avg_cvss >= 8:
+        cvss = r.get("cvss_score")
+
+        # Only count real vulnerabilities
+        if r.get("vulnerable") is True and isinstance(cvss, (int, float)):
+            total_cvss += cvss
+            vulnerability_count += 1
+
+    if total_valid_checks == 0:
+        return 0, "Secure", vulnerability_count, failed_checks
+
+    # Maximum possible score = 10 per valid check
+    max_possible = total_valid_checks * 10
+
+    threat_score = round((total_cvss / max_possible) * 100)
+
+    # Professional risk tiering
+    if threat_score >= 75:
         category = "Critical"
-    elif avg_cvss >= 6:
+    elif threat_score >= 50:
         category = "High"
-    elif avg_cvss >= 4:
+    elif threat_score >= 25:
         category = "Medium"
+    elif vulnerability_count == 0:
+        category = "Secure"
     else:
         category = "Low"
 
-    return percent_score, category
+    return threat_score, category, vulnerability_count, failed_checks
 
 
 # =====================================================
-# Main Scan Orchestrator
+# Main Orchestrator
 # =====================================================
 
 def run_scan(os_type, ip, username, password=None, key_file=None):
     os_type = os_type.lower()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    start_time = time.time()
 
     try:
         if os_type == "linux":
@@ -164,15 +204,21 @@ def run_scan(os_type, ip, username, password=None, key_file=None):
         else:
             raise ValueError("Unsupported OS")
 
-        threat_score, threat_category = calculate_threat(results)
+        threat_score, threat_category, vuln_count, failed_count = calculate_threat(results)
+
+        duration = round(time.time() - start_time, 2)
 
         return {
             "device": ip,
             "os": os_type,
             "username": username,
             "date": timestamp,
+            "scan_duration_seconds": duration,
             "threat_score": threat_score,
             "threat_category": threat_category,
+            "total_checks": len(results),
+            "vulnerabilities_found": vuln_count,
+            "checks_failed": failed_count,
             "results": results
         }
 
@@ -182,6 +228,7 @@ def run_scan(os_type, ip, username, password=None, key_file=None):
             "os": os_type,
             "username": username,
             "date": timestamp,
+            "scan_duration_seconds": 0,
             "threat_score": 0,
             "threat_category": "ScanFailed",
             "error": str(e),
